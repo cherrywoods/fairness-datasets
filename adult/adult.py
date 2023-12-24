@@ -32,6 +32,7 @@ class Adult(Dataset):
     The dataset is preprocessed by:
      - removing rows (samples) with missing values
      - one-hot encoding all categorical attributes
+     - applying z-score normalization to all continuous variables
     """
 
     dataset_url = "https://archive.ics.uci.edu/static/public/2/adult.zip"
@@ -228,7 +229,7 @@ class Adult(Dataset):
                     "Dataset not found. Download it by passing download=True."
                 )
             os.makedirs(self.files_dir)
-            train_data, test_data = self.__download()
+            train_data, test_data = self._download()
             if train:
                 table = train_data
             else:
@@ -251,10 +252,10 @@ class Adult(Dataset):
             if any(col.startswith(att + "=") for att in sensitive_attributes)
         )
 
-        self.data = torch.tensor(data.values.astype(np.float32))
+        self.data = torch.tensor(data.values.astype(np.float64), dtype=torch.get_default_dtype())
         self.targets = torch.tensor(targets.values.astype(np.int64))
 
-    def __download(self) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+    def _download(self) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
         self.__output_fn("Downloading Adult dataset file...")
         dataset_path = self.files_dir / "dataset.zip"
         try:
@@ -297,10 +298,10 @@ class Adult(Dataset):
         )
 
         # preprocess strings
-        train_data = train_data.applymap(
+        train_data = train_data.map(
             lambda val: val.strip() if isinstance(val, str) else val
         )
-        test_data = test_data.applymap(
+        test_data = test_data.map(
             lambda val: val.strip() if isinstance(val, str) else val
         )
 
