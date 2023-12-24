@@ -23,7 +23,7 @@ class AdultRaw(Adult):
         lambda d1, d2: d1 | d2,
         (
             {value: index for index, value in enumerate(values)}
-            for values in Adult.columns_with_values.values()
+            for values in Adult._columns_with_values.values()
             if values is not None
         )
     )

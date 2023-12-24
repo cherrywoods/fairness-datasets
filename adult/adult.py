@@ -41,7 +41,7 @@ class Adult(Dataset):
         "adult.test": "a2a9044bc167a35b2361efbabec64e89d69ce82d9790d2980119aac5fd7e9c05",
         "adult.data": "5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d",
     }
-    columns_with_values = OrderedDict(
+    _columns_with_values = OrderedDict(
         [
             ("age", None),  # continuous variables marked with None
             (
@@ -178,7 +178,7 @@ class Adult(Dataset):
             ),
         ]
     )
-    label_map = {"<=50K": False, ">50K": True, "<=50K.": False, ">50K.": True}
+    _label_map = {"<=50K": False, ">50K": True, "<=50K.": False, ">50K.": True}
 
     train_file = "train.csv"
     test_file = "test.csv"
@@ -262,6 +262,7 @@ class Adult(Dataset):
             data.values.astype(np.float64), dtype=torch.get_default_dtype()
         )
         self.targets = torch.tensor(targets.values.astype(np.int64))
+        self.columns = data.columns
 
     def _output(self, message: str):
         self.__output_fn(message)
@@ -296,18 +297,18 @@ class Adult(Dataset):
                 )
         self._output("Download finished.")
 
-        all_colums = list(self.columns_with_values.keys()) + ["income"]
+        all_columns = list(self._columns_with_values.keys()) + ["income"]
         train_data: pandas.DataFrame = pandas.read_csv(
             Path(self.files_dir, self.files["train"]),
             header=None,
             index_col=False,
-            names=all_colums,
+            names=all_columns,
         )
         test_data: pandas.DataFrame = pandas.read_csv(
             Path(self.files_dir, self.files["test"]),
             header=0,  # first colum contains a note that we throw away
             index_col=False,
-            names=all_colums,
+            names=all_columns,
         )
         return train_data, test_data
 
@@ -353,7 +354,7 @@ class Adult(Dataset):
         Applies :code:`self.label_map`.
         Modifies :code:`table` in-place.
         """
-        table.replace(self.label_map, inplace=True)
+        table.replace(self._label_map, inplace=True)
 
     def _preprocess_features(
         self, train_data: pandas.DataFrame, test_data: pandas.DataFrame
@@ -364,7 +365,7 @@ class Adult(Dataset):
         """
         # one-hot encode all categorical variables
         categorical_cols = [
-            col for col, vals in self.columns_with_values.items() if vals is not None
+            col for col, vals in self._columns_with_values.items() if vals is not None
         ]
         train_data = pandas.get_dummies(
             train_data, columns=categorical_cols, prefix_sep="="
@@ -382,7 +383,7 @@ class Adult(Dataset):
 
         # standardise continuous columns (z score)
         continuous_cols = [
-            col for col, vals in self.columns_with_values.items() if vals is None
+            col for col, vals in self._columns_with_values.items() if vals is None
         ]
         for col in continuous_cols:
             mean = train_data[col].mean()
