@@ -222,14 +222,20 @@ class Adult(Dataset):
         else:
             self.__output_fn = output_fn
 
-        self.files_dir = Path(root, "Adult")
+        self.files_dir = Path(root, type(self).__name__)
         if not self.files_dir.exists():
             if not download:
                 raise RuntimeError(
                     "Dataset not found. Download it by passing download=True."
                 )
             os.makedirs(self.files_dir)
-            train_data, test_data = self._download()
+            train_raw, test_raw = self._download()
+            train_data, test_data = self._preprocess(train_raw, test_raw)
+
+            # create new csv files for the transformed data
+            train_data.to_csv(Path(self.files_dir, self.train_file), index=False)
+            test_data.to_csv(Path(self.files_dir, self.test_file), index=False)
+
             if train:
                 table = train_data
             else:
@@ -245,18 +251,27 @@ class Adult(Dataset):
 
         if isinstance(sensitive_attributes, str):
             sensitive_attributes = (sensitive_attributes,)
-        # get all columns that start with a protected attribute and = (one-hot encoding)
+        # get all columns that start with a protected attribute
         self.__sensitive_colum_indices = tuple(
             data.columns.get_loc(col)
             for col in table.columns
-            if any(col.startswith(att + "=") for att in sensitive_attributes)
+            if any(col.startswith(att) for att in sensitive_attributes)
         )
 
-        self.data = torch.tensor(data.values.astype(np.float64), dtype=torch.get_default_dtype())
+        self.data = torch.tensor(
+            data.values.astype(np.float64), dtype=torch.get_default_dtype()
+        )
         self.targets = torch.tensor(targets.values.astype(np.int64))
 
+    def _output(self, message: str):
+        self.__output_fn(message)
+
     def _download(self) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-        self.__output_fn("Downloading Adult dataset file...")
+        """
+        Downloads the Adult dataset, extracts the data and returns
+        the raw training data and the raw test data as pandas :code:`DataFrames`.
+        """
+        self._output("Downloading Adult dataset file...")
         dataset_path = self.files_dir / "dataset.zip"
         try:
             dataset_path.touch(exist_ok=False)
@@ -270,7 +285,7 @@ class Adult(Dataset):
         finally:
             dataset_path.unlink(missing_ok=True)
 
-        self.__output_fn("Checking integrity of downloaded files...")
+        self._output("Checking integrity of downloaded files...")
         for file_name, checksum in self.checksums.items():
             file_path = Path(self.files_dir, file_name)
             downloaded_file_checksum = sha256sum(file_path)
@@ -279,10 +294,8 @@ class Adult(Dataset):
                     f"Downloaded file has different checksum than expected: {file_name}. "
                     f"Expected sha256 checksum: {checksum}"
                 )
+        self._output("Download finished.")
 
-        self.__output_fn("Preprocessing data...")
-        # code closely follows:
-        # https://github.com/eth-sri/lcifr/blob/master/code/datasets/adult.py
         all_colums = list(self.columns_with_values.keys()) + ["income"]
         train_data: pandas.DataFrame = pandas.read_csv(
             Path(self.files_dir, self.files["train"]),
@@ -296,25 +309,59 @@ class Adult(Dataset):
             index_col=False,
             names=all_colums,
         )
+        return train_data, test_data
 
-        # preprocess strings
-        train_data = train_data.map(
-            lambda val: val.strip() if isinstance(val, str) else val
-        )
-        test_data = test_data.map(
-            lambda val: val.strip() if isinstance(val, str) else val
-        )
+    def _preprocess(
+        self, train_raw: pandas.DataFrame, test_raw: pandas.DataFrame
+    ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+        self._output("Preprocessing data...")
+        # code closely follows:
+        # https://github.com/eth-sri/lcifr/blob/master/code/datasets/adult.py
+        train_data = self._strip_strings(train_raw)
+        test_data = self._strip_strings(test_raw)
 
         # transform the dataset: drop rows with missing values
         # missing values are encoded as ? in the original tables
-        for table in [train_data, test_data]:
-            table.replace(to_replace="?", value=np.nan, inplace=True)
-            table.dropna(axis=0, inplace=True)
+        self._remove_missing_values(train_data)
+        self._remove_missing_values(test_data)
 
         # map labels to (uniform) boolean values
-        for table in [train_data, test_data]:
-            table.replace(self.label_map, inplace=True)
+        self._preprocess_labels(train_data)
+        self._preprocess_labels(test_data)
 
+        train_data, test_data = self._preprocess_features(train_data, test_data)
+        self._output("Preprocessing finished.")
+        return train_data, test_data
+
+    @staticmethod
+    def _strip_strings(table: pandas.DataFrame):
+        """Strips all strings in a :code:`DataFrame`."""
+        # preprocess strings
+        return table.map(lambda val: val.strip() if isinstance(val, str) else val)
+
+    @staticmethod
+    def _remove_missing_values(table: pandas.DataFrame):
+        """
+        Removes rows with missing values (encoded as '?') from table.
+        Modifies :code:`table` in-place.
+        """
+        table.replace(to_replace="?", value=np.nan, inplace=True)
+        table.dropna(axis=0, inplace=True)
+
+    def _preprocess_labels(self, table: pandas.DataFrame):
+        """
+        Applies :code:`self.label_map`.
+        Modifies :code:`table` in-place.
+        """
+        table.replace(self.label_map, inplace=True)
+
+    def _preprocess_features(
+        self, train_data: pandas.DataFrame, test_data: pandas.DataFrame
+    ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+        """
+        Applies a one-hot encoding to all categorical attributes and
+        z-score normalization to all continuous attributes.
+        """
         # one-hot encode all categorical variables
         categorical_cols = [
             col for col, vals in self.columns_with_values.items() if vals is not None
@@ -342,11 +389,6 @@ class Adult(Dataset):
             std = train_data[col].std()
             train_data[col] = (train_data[col] - mean) / std
             test_data[col] = (test_data[col] - mean) / std
-
-        # create new csv files for the transformed data
-        train_data.to_csv(Path(self.files_dir, self.train_file), index=False)
-        test_data.to_csv(Path(self.files_dir, self.test_file), index=False)
-        self.__output_fn("Download finished.")
         return train_data, test_data
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:

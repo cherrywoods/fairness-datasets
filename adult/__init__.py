@@ -5,3 +5,4 @@ PyTorch dataset wrapper for the
 __version__ = "1.1.0"
 
 from .adult import Adult
+from .adult_raw import AdultRaw
