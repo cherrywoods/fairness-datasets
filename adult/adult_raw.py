@@ -25,7 +25,7 @@ class AdultRaw(Adult):
             {value: index for index, value in enumerate(values)}
             for values in Adult._columns_with_values.values()
             if values is not None
-        )
+        ),
     )
 
     def _preprocess_features(
@@ -39,9 +39,13 @@ class AdultRaw(Adult):
         # In the Adult class, all (one-hot encoded) categorical attributes
         # are moved to the end.
         # Mimic this here.
-        continuous_columns = [col for col, vals in self._columns_with_values.items() if vals is None]
-        categorical_columns = [col for col, vals in self._columns_with_values.items() if vals is not None]
-        new_column_order = continuous_columns + categorical_columns
+        continuous_columns = [
+            col for col, vals in self._columns_with_values.items() if vals is None
+        ]
+        categorical_columns = [
+            col for col, vals in self._columns_with_values.items() if vals is not None
+        ]
+        new_column_order = continuous_columns + categorical_columns + ["income"]
         train_data = train_data[new_column_order]
         test_data = test_data[new_column_order]
         return train_data, test_data

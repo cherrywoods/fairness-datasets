@@ -8,7 +8,11 @@ from torch.utils.data import DataLoader
 from adult import Adult, AdultRaw
 
 
-@pytest.fixture(scope="module", params=[(Adult, "adult_path"), (AdultRaw, "adult_raw_path")], ids=["Adult", "AdultRaw"])
+@pytest.fixture(
+    scope="module",
+    params=[(Adult, "adult_path"), (AdultRaw, "adult_raw_path")],
+    ids=["Adult", "AdultRaw"],
+)
 def dataset(request):
     adult_class, dataset_path = request.param
     dataset_path = request.getfixturevalue(dataset_path)
