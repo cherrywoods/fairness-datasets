@@ -19,7 +19,7 @@ class AdultRaw(Adult):
     The categorical variables are instead encoded as integers.
     """
 
-    categorical_features_map = reduce(
+    _categorical_features_map = reduce(
         lambda d1, d2: d1 | d2,
         (
             {value: index for index, value in enumerate(values)}
@@ -35,5 +35,13 @@ class AdultRaw(Adult):
         Replaces string values of categorical attributes with integers.
         """
         for table in [train_data, test_data]:
-            table.replace(self.categorical_features_map, inplace=True)
+            table.replace(self._categorical_features_map, inplace=True)
+        # In the Adult class, all (one-hot encoded) categorical attributes
+        # are moved to the end.
+        # Mimic this here.
+        continuous_columns = [col for col, vals in self._columns_with_values.items() if vals is None]
+        categorical_columns = [col for col, vals in self._columns_with_values.items() if vals is not None]
+        new_column_order = continuous_columns + categorical_columns
+        train_data = train_data[new_column_order]
+        test_data = test_data[new_column_order]
         return train_data, test_data
