@@ -3,11 +3,15 @@ A PyTorch dataset wrapper for the
 [Adult (Census Income)](https://archive.ics.uci.edu/dataset/2/adult) dataset.
 Adult is a popular dataset in machine learning fairness research. 
 
-This package contains only a single class: `adult.Adult`, 
-a `torch.utils.data.Dataset` loading and, optionally, downloading the
+This package provides the `adult.Adult` class:
+a`torch.utils.data.Datasets` loading and, optionally, downloading the
 Adult dataset.
-This class can be used like the `MNIST` dataset in
+It can be used like the `MNIST` dataset in
 [torchvision](https://pytorch.org/vision/stable/generated/torchvision.datasets.MNIST.html?highlight=mnist#torchvision.datasets.MNIST).
+
+Beyond `adult.Adult`, this package also provides `adult.AdultRaw`,
+which works just as `adult.Adult`, but
+does not standardize the features in the dataset and does not apply one-hot encoding.
 
 ## Installation
 ```shell
@@ -18,7 +22,7 @@ pip install adult-dataset
 ```python
 from adult import Adult
 
-# load (if necessary, download) the Adult training dataset
+# load (if necessary, download) the Adult training dataset 
 train_set = Adult(root="datasets", download=True)
 # load the test set
 test_set = Adult(root="datasets", train=False, download=True)
