@@ -1,5 +1,6 @@
 # Copyright (c) 2023 David Boetius
 # Licensed under the MIT license
+import itertools
 from typing import Callable, Optional, Tuple, Union
 
 import os
@@ -180,6 +181,11 @@ class Adult(Dataset):
     )
     _label_map = {"<=50K": False, ">50K": True, "<=50K.": False, ">50K.": True}
 
+    columns = tuple(itertools.chain(*(
+        [col_name] if values is None else [f"{col_name}={value}" for value in values]
+        for col_name, values in _columns_with_values.items()
+    )))
+
     train_file = "train.csv"
     test_file = "test.csv"
 
@@ -262,7 +268,6 @@ class Adult(Dataset):
             data.values.astype(np.float64), dtype=torch.get_default_dtype()
         )
         self.targets = torch.tensor(targets.values.astype(np.int64))
-        self.columns = data.columns
 
     def _output(self, message: str):
         self.__output_fn(message)
@@ -374,12 +379,18 @@ class Adult(Dataset):
             test_data, columns=categorical_cols, prefix_sep="="
         )
 
-        # the test data does not contain people of Dutch origin, add the column explicitly
-        test_data.insert(
-            loc=train_data.columns.get_loc("native-country=Holand-Netherlands"),
-            column="native-country=Holand-Netherlands",
-            value=0,
-        )
+        # The test data does not contain people of Dutch origin, add the column explicitly
+        # Both datasets lack people who have never worked.
+        for col in self.columns:
+            if col not in train_data.columns:
+                train_data.insert(loc=0, column=col, value=0.0)
+            if col not in test_data.columns:
+                test_data.insert(loc=0, column=col, value=0.0)
+
+        # reorder dataset columns
+        all_columns = list(self.columns) + ["income"]
+        train_data = train_data[all_columns]
+        test_data = test_data[all_columns]
 
         # standardise continuous columns (z score)
         continuous_cols = [
