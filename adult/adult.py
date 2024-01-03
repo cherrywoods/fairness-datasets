@@ -55,7 +55,7 @@ class Adult(Dataset):
                     "Local-gov",
                     "State-gov",
                     "Without-pay",
-                    "Never-worked",
+                    # "Never-worked",  # does not appear in dataset
                 ],
             ),
             ("fnlwgt", None),
