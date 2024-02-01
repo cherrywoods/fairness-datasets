@@ -17,18 +17,23 @@ class AdultRaw(Adult):
     variables.
     However, it also removes rows with missing values.
     The categorical variables are instead encoded as integers.
+
+    Attributes:
+    The attributes are as for :code:`Adult`, except that the value
+    of `AdultRaw.columns` has a different value.
+    In particular, :code:`AdultRaw.columns = ("age", "workclass", "fnlwgt", ...)`
     """
 
     _categorical_features_map = reduce(
         lambda d1, d2: d1 | d2,
         (
             {value: index for index, value in enumerate(values)}
-            for values in Adult._columns_with_values.values()
+            for values in Adult.variables.values()
             if values is not None
         ),
     )
 
-    columns = tuple(col_name for col_name in Adult._columns_with_values)
+    columns = tuple(col_name for col_name in Adult.variables)
 
     def _preprocess_features(
         self, train_data: pandas.DataFrame, test_data: pandas.DataFrame

@@ -34,20 +34,43 @@ class Adult(Dataset):
      - removing rows (samples) with missing values
      - one-hot encoding all categorical attributes
      - applying z-score normalization to all continuous variables
+
+    Attributes:
+     - `dataset_url`: The URL the Adult dataset is downloaded from.
+     - `files_to_download`: The files that are downloaded from `dataset_url`.
+     - `checksums`: The checksums of the files in `files`.
+     - `train_file`: The file containing the training data after downloading.
+     - `test_file`: The file containing the test data after downloading.
+     - `variables_with_values`: The list of variables of the Adult dataset,
+        together with the values they may take on.
+        For integer variables, such as `age`, the value is :code:`None`.
+        That is, :code:`Adult.variables["age"] = None`.
+        For categorical variables, like `sex`, the value is a tuple of strings.
+        For example, :code:`Adult.variables["sex"] = ("female", "male")`.
+        Values that do not appear in the dataset after preprocessing are not
+        included.
+        This only affects the values of `workclass`, where `workclass=Never-worked`
+        is dropped, as it does not appear in the dataset after dropping rows with
+        missing values.
+     - `columns`: Column labels for the tensors in this dataset (after one-hot encoding).
+        This is :code:`Adult.columns = ("age", "workclass=Private",
+        "workclass=Self-emp-not-inc", ...)`.
     """
 
     dataset_url = "https://archive.ics.uci.edu/static/public/2/adult.zip"
-    files = {"test": "adult.test", "train": "adult.data"}
+    files_to_download = {"test": "adult.test", "train": "adult.data"}
     checksums = {
         "adult.test": "a2a9044bc167a35b2361efbabec64e89d69ce82d9790d2980119aac5fd7e9c05",
         "adult.data": "5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d",
     }
-    _columns_with_values = OrderedDict(
+    train_file = "train.csv"
+    test_file = "test.csv"
+    variables = OrderedDict(
         [
             ("age", None),  # continuous variables marked with None
             (
                 "workclass",
-                [
+                (
                     "Private",
                     "Self-emp-not-inc",
                     "Self-emp-inc",
@@ -56,12 +79,12 @@ class Adult(Dataset):
                     "State-gov",
                     "Without-pay",
                     # "Never-worked",  # does not appear in dataset
-                ],
+                ),
             ),
             ("fnlwgt", None),
             (
                 "education",
-                [
+                (
                     "Bachelors",
                     "Some-college",
                     "11th",
@@ -78,12 +101,12 @@ class Adult(Dataset):
                     "Doctorate",
                     "5th-6th",
                     "Preschool",
-                ],
+                ),
             ),
             ("education-num", None),
             (
                 "marital-status",
-                [
+                (
                     "Married-civ-spouse",
                     "Divorced",
                     "Never-married",
@@ -91,11 +114,11 @@ class Adult(Dataset):
                     "Widowed",
                     "Married-spouse-absent",
                     "Married-AF-spouse",
-                ],
+                ),
             ),
             (
                 "occupation",
-                [
+                (
                     "Tech-support",
                     "Craft-repair",
                     "Other-service",
@@ -110,30 +133,30 @@ class Adult(Dataset):
                     "Priv-house-serv",
                     "Protective-serv",
                     "Armed-Forces",
-                ],
+                ),
             ),
             (
                 "relationship",
-                [
+                (
                     "Wife",
                     "Own-child",
                     "Husband",
                     "Not-in-family",
                     "Other-relative",
                     "Unmarried",
-                ],
+                ),
             ),
             (
                 "race",
-                ["White", "Asian-Pac-Islander", "Amer-Indian-Eskimo", "Other", "Black"],
+                ("White", "Asian-Pac-Islander", "Amer-Indian-Eskimo", "Other", "Black"),
             ),
-            ("sex", ["Female", "Male"]),
+            ("sex", ("Female", "Male")),
             ("capital-gain", None),
             ("capital-loss", None),
             ("hours-per-week", None),
             (
                 "native-country",
-                [
+                (
                     "United-States",
                     "Cambodia",
                     "England",
@@ -175,7 +198,7 @@ class Adult(Dataset):
                     "Peru",
                     "Hong",
                     "Holand-Netherlands",
-                ],
+                ),
             ),
         ]
     )
@@ -183,11 +206,8 @@ class Adult(Dataset):
 
     columns = tuple(itertools.chain(*(
         [col_name] if values is None else [f"{col_name}={value}" for value in values]
-        for col_name, values in _columns_with_values.items()
+        for col_name, values in variables.items()
     )))
-
-    train_file = "train.csv"
-    test_file = "test.csv"
 
     def __init__(
         self,
@@ -286,7 +306,7 @@ class Adult(Dataset):
                 for chunk in result.iter_content(chunk_size=256):
                     dataset_file.write(chunk)
             with ZipFile(dataset_path) as dataset_archive:
-                for file_name in self.files.values():
+                for file_name in self.files_to_download.values():
                     dataset_archive.extract(file_name, self.files_dir)
         finally:
             dataset_path.unlink(missing_ok=True)
@@ -302,15 +322,15 @@ class Adult(Dataset):
                 )
         self._output("Download finished.")
 
-        all_columns = list(self._columns_with_values.keys()) + ["income"]
+        all_columns = list(self.variables.keys()) + ["income"]
         train_data: pandas.DataFrame = pandas.read_csv(
-            Path(self.files_dir, self.files["train"]),
+            Path(self.files_dir, self.files_to_download["train"]),
             header=None,
             index_col=False,
             names=all_columns,
         )
         test_data: pandas.DataFrame = pandas.read_csv(
-            Path(self.files_dir, self.files["test"]),
+            Path(self.files_dir, self.files_to_download["test"]),
             header=0,  # first colum contains a note that we throw away
             index_col=False,
             names=all_columns,
@@ -370,7 +390,7 @@ class Adult(Dataset):
         """
         # one-hot encode all categorical variables
         categorical_cols = [
-            col for col, vals in self._columns_with_values.items() if vals is not None
+            col for col, vals in self.variables.items() if vals is not None
         ]
         train_data = pandas.get_dummies(
             train_data, columns=categorical_cols, prefix_sep="="
@@ -394,7 +414,7 @@ class Adult(Dataset):
 
         # standardise continuous columns (z score)
         continuous_cols = [
-            col for col, vals in self._columns_with_values.items() if vals is None
+            col for col, vals in self.variables.items() if vals is None
         ]
         for col in continuous_cols:
             mean = train_data[col].mean()
