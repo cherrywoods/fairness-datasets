@@ -331,7 +331,7 @@ class Adult(Dataset):
         )
         test_data: pandas.DataFrame = pandas.read_csv(
             Path(self.files_dir, self.files_to_download["test"]),
-            header=0,  # first colum contains a note that we throw away
+            header=0,  # first row contains a note that we throw away
             index_col=False,
             names=all_columns,
         )
