@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from adult import Adult, AdultRaw
+from fairnessdatasets import Adult, AdultRaw
 
 
 @pytest.fixture(scope="session")

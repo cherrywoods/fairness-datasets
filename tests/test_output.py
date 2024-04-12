@@ -2,7 +2,7 @@
 # Licensed under the MIT license
 import logging
 
-from adult import Adult
+from fairnessdatasets import Adult
 
 
 def test_print(tmp_path):

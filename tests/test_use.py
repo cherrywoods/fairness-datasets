@@ -1,11 +1,9 @@
-# Copyright (c) 2023 David Boetius
+# Copyright (c) 2024 David Boetius
 # Licensed under the MIT license
-from tempfile import TemporaryDirectory
-
 import pytest
 from torch.utils.data import DataLoader
 
-from adult import Adult, AdultRaw
+from fairnessdatasets import Adult, AdultRaw
 
 
 @pytest.fixture(

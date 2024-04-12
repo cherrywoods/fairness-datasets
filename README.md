@@ -1,6 +1,13 @@
-# adult-dataset
-A PyTorch dataset wrapper for the 
-[Adult (Census Income)](https://archive.ics.uci.edu/dataset/2/adult) dataset.
+# fairness-datasets
+A PyTorch dataset wrapper for the several popular datasets from 
+fair machine learning research.
+
+The following datasets are wrapped:
+ - [Adult (Census Income)](https://archive.ics.uci.edu/dataset/2/adult).
+ - [Law School](https://eric.ed.gov/?id=ED469370) (data from [here](https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study))
+
+## Usage Example
+TODO: 
 Adult is a popular dataset in machine learning fairness research. 
 
 This package provides the `adult.Adult` class:

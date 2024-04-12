@@ -1,7 +1,6 @@
-# Copyright (c) 2023 David Boetius
+# Copyright (c) 2024 David Boetius
 # Licensed under the MIT license
 from typing import Tuple
-from functools import reduce
 
 import pandas
 
@@ -24,15 +23,6 @@ class AdultRaw(Adult):
     In particular, :code:`AdultRaw.columns = ("age", "workclass", "fnlwgt", ...)`
     """
 
-    _categorical_features_map = reduce(
-        lambda d1, d2: d1 | d2,
-        (
-            {value: index for index, value in enumerate(values)}
-            for values in Adult.variables.values()
-            if values is not None
-        ),
-    )
-
     columns = tuple(col_name for col_name in Adult.variables)
 
     def _preprocess_features(
@@ -41,10 +31,10 @@ class AdultRaw(Adult):
         """
         Replaces string values of categorical attributes with integers.
         """
-        for table in [train_data, test_data]:
-            table.replace(self._categorical_features_map, inplace=True)
-
-        all_columns = list(self.columns) + ["income"]
-        train_data = train_data[all_columns]
-        test_data = test_data[all_columns]
+        categorical = {
+            var: vals for var, vals in self.variables.items() if vals is not None
+        }
+        train_data, test_data = self._categorical_to_integer(
+            train_data, test_data, variables=categorical
+        )
         return train_data, test_data

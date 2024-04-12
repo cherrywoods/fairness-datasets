@@ -1,8 +1,8 @@
-# Copyright (c) 2023 David Boetius
+# Copyright (c) 2024 David Boetius
 # Licensed under the MIT license
 import pytest
 
-from adult import Adult, AdultRaw
+from fairnessdatasets import Adult, AdultRaw
 
 
 @pytest.mark.parametrize(
