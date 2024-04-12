@@ -1,4 +1,6 @@
 # fairness-datasets
+[![PyPI version](https://badge.fury.io/py/fairness-datasets.svg)](https://badge.fury.io/py/fairness-datasets)
+
 PyTorch dataset wrappers for the several popular datasets from 
 fair machine learning research.
 
