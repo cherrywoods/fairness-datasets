@@ -3,24 +3,40 @@
 import pytest
 from torch.utils.data import DataLoader
 
-from fairnessdatasets import Adult, AdultRaw
+from fairnessdatasets import Adult, SouthGerman, Default
 
 
 @pytest.fixture(
     scope="module",
-    params=[(Adult, "adult_path"), (AdultRaw, "adult_raw_path")],
-    ids=["Adult", "AdultRaw"],
+    params=[
+        (Adult, {"raw": False}, "adult_path"),
+        (Adult, {"raw": True}, "adult_raw_path"),
+        (SouthGerman, {"raw": False}, "south_german_path"),
+        (SouthGerman, {"raw": True}, "south_german_raw_path"),
+        (Default, {"raw": False}, "default_path"),
+        (Default, {"raw": True}, "default_raw_path"),
+    ],
+    ids=[
+        "Adult",
+        "Adult-raw",
+        "SouthGerman",
+        "SouthGerman-raw",
+        "Default",
+        "Default-raw",
+    ],
 )
 def dataset(request):
-    adult_class, dataset_path = request.param
+    dataset_class, init_kwargs, dataset_path = request.param
     dataset_path = request.getfixturevalue(dataset_path)
-    return adult_class(dataset_path)
+    return dataset_class(dataset_path, **init_kwargs)
 
 
 def test_iterate(dataset):
     for i, (inputs, target) in enumerate(iter(dataset)):
-        if i % 1000 == 0:
+        if i % 100 == 0:
             print(i, inputs, target)
+        if i > 500:
+            break
 
 
 def test_data_loader(dataset):

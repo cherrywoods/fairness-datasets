@@ -1,16 +1,16 @@
 # Copyright (c) 2024 David Boetius
 # Licensed under the MIT license
 import itertools
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import os
 
 import pandas
 
-from .base import CSVDataset
+from .base import DefaultPreprocessing
 
 
-class Adult(CSVDataset):
+class Adult(DefaultPreprocessing):
     """
     The `Adult <https://archive.ics.uci.edu/dataset/2/adult>`_ dataset.
 
@@ -18,27 +18,34 @@ class Adult(CSVDataset):
      - removing rows (samples) with missing values
      - one-hot encoding all categorical attributes
      - applying z-score normalization to all continuous variables
+    The last two preprocessing steps are optional and can be turned off by
+    passing :code:`raw=True` to the initializer.
+
+    Class Attributes:
+    - `dataset_url`: The URL the Adult dataset is downloaded from.
+    - `files_to_download`: The files that are downloaded from `dataset_url`.
+    - `checksums`: The checksums of the files in `files`.
+    - `variables`: The variables of the Adult dataset,
+       together with the values they may take on.
+       For integer variables, such as `age`, the value is :code:`None`.
+       That is, :code:`Adult.variables["age"] = None`.
+       For categorical variables, like `sex`, the value is a tuple of strings.
+       For example, :code:`Adult.variables["sex"] = ("female", "male")`.
+       Values that do not appear in the dataset after preprocessing are not
+       included.
+       This only affects the values of `workclass`, where `workclass=Never-worked`
+       is dropped, as it does not appear in the dataset after dropping rows with
+       missing values.
 
     Attributes:
-     - `dataset_url`: The URL the Adult dataset is downloaded from.
-     - `files_to_download`: The files that are downloaded from `dataset_url`.
-     - `checksums`: The checksums of the files in `files`.
-     - `train_file`: The file containing the training data after downloading.
-     - `test_file`: The file containing the test data after downloading.
-     - `variables`: The variables of the Adult dataset,
-        together with the values they may take on.
-        For integer variables, such as `age`, the value is :code:`None`.
-        That is, :code:`Adult.variables["age"] = None`.
-        For categorical variables, like `sex`, the value is a tuple of strings.
-        For example, :code:`Adult.variables["sex"] = ("female", "male")`.
-        Values that do not appear in the dataset after preprocessing are not
-        included.
-        This only affects the values of `workclass`, where `workclass=Never-worked`
-        is dropped, as it does not appear in the dataset after dropping rows with
-        missing values.
-     - `columns`: Column labels for the tensors in this dataset (after one-hot encoding).
-        This is :code:`Adult.columns = ("age", "workclass=Private",
-        "workclass=Self-emp-not-inc", ...)`.
+    - `columns`: Column labels for the tensors in this dataset
+      (after one-hot encoding, if applied).
+       This is :code:`Adult.columns = ("age", "workclass=Private",
+       "workclass=Self-emp-not-inc", ...)`.
+    - `files_dir`: Where the data files are stored or downloaded to.
+      Value: Root path (user specified) / `type(self).__name__)`
+    - `data`: The dataset features (x values)
+    - `targets` The dataset targets (y values)
     """
 
     dataset_url = "https://archive.ics.uci.edu/static/public/2/adult.zip"
@@ -47,8 +54,6 @@ class Adult(CSVDataset):
         "adult.test": "a2a9044bc167a35b2361efbabec64e89d69ce82d9790d2980119aac5fd7e9c05",
         "adult.data": "5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d",
     }
-    train_file = "train.csv"
-    test_file = "test.csv"
     variables = {
         "age": None,  # continuous variables marked with None
         "workclass": (
@@ -164,21 +169,11 @@ class Adult(CSVDataset):
         ),
     }
 
-    columns = tuple(
-        itertools.chain(
-            *(
-                [col_name]
-                if values is None
-                else [f"{col_name}={value}" for value in values]
-                for col_name, values in variables.items()
-            )
-        )
-    )
-
     def __init__(
         self,
         root: Union[str, os.PathLike],
         train: bool = True,
+        raw: bool = False,
         download: bool = False,
         output_fn: Optional[Callable[[str], None]] = print,
     ):
@@ -189,6 +184,9 @@ class Adult(CSVDataset):
           is to be downloaded to if download is set to True.
         :param train: Whether to retrieve the training set or test set of
           the dataset.
+        :param raw: When :code:`True`, no one-hot encoding and standardization
+         is applied to the downloaded data.
+         Rows with missing values are dropped in any case.
         :param download: Whether to download the Adult dataset from
           https://archive.ics.uci.edu/dataset/2/adult if it is not
           present in the root directory.
@@ -196,16 +194,31 @@ class Adult(CSVDataset):
           For example, :code:`print` or :code:`logging.info`.
           Pass `None` to turn off command line output.
         """
-        super().__init__(root, train, download, output_fn)
+        self._train = train
+        super().__init__(root, raw, download, output_fn)
 
-    def _download(self) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-        """
-        Downloads the Adult dataset, extracts the data and returns
-        the raw training data and the raw test data as pandas :code:`DataFrames`.
-        """
+    def _raw_files(self) -> tuple[str, ...]:
+        return tuple(self.checksums)
+
+    def _data_files(self) -> tuple[str, ...]:
+        if not self._raw:
+            return ("train.csv", "test.csv")
+        else:
+            return ("train_raw.csv", "test_raw.csv")
+
+    def _data_file(self) -> str:
+        file = "train" if self._train else "test"
+        file += "_raw" if self._raw else ""
+        return f"{file}.csv"
+
+    def _target_column(self) -> str:
+        return "income"
+
+    def _download(self):
         self._download_zip(self.dataset_url, self.checksums)
 
-        all_columns = list(self.variables.keys()) + ["income"]
+    def _load_raw(self) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+        all_columns = list(self.variables.keys()) + [self._target_column()]
         train_data: pandas.DataFrame = pandas.read_csv(
             self.files_dir / self.files_to_download["train"],
             header=None,
@@ -238,40 +251,10 @@ class Adult(CSVDataset):
         train_data.replace(self._label_map, inplace=True)
         test_data.replace(self._label_map, inplace=True)
 
-        train_data, test_data = self._preprocess_features(train_data, test_data)
-
-        all_columns = list(self.columns) + ["income"]
-        train_data = train_data[all_columns]
-        test_data = test_data[all_columns]
+        train_data, test_data = super()._preprocess(train_data, test_data)
 
         self._output("Preprocessing finished.")
         return train_data, test_data
 
-    def _preprocess_features(
-        self, train_data: pandas.DataFrame, test_data: pandas.DataFrame
-    ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-        categorical = {
-            var: vals for var, vals in self.variables.items() if vals is not None
-        }
-        train_data, test_data = self._encode_one_hot(
-            train_data, test_data, variables=categorical
-        )
-        continuous = [var for var, vals in self.variables.items() if vals is None]
-        train_data, test_data = self._standardize(
-            train_data, test_data, variables=continuous, reference_data=train_data
-        )
-        return train_data, test_data
-
-    def _train_test_split(
-        self, *data: pandas.DataFrame
-    ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-        return data[0], data[1]
-
-    def _target_column(self) -> str:
-        return "income"
-
-    def column_indices(self, variable: str) -> Tuple[int, ...]:
-        assert variable in self.variables
-        return tuple(
-            i for i, col in enumerate(self.columns) if col.startswith(variable)
-        )
+    def _variables(self) -> Dict[str, Optional[Tuple[str, ...]]]:
+        return self.variables
