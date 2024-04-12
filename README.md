@@ -12,7 +12,7 @@ The following datasets are wrapped:
 
 ## Installation
 ```shell
-pip install adult-dataset
+pip install fairness-datasets
 ```
 
 ## Basic Usage
