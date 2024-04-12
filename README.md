@@ -1,24 +1,12 @@
 # fairness-datasets
-A PyTorch dataset wrapper for the several popular datasets from 
+PyTorch dataset wrappers for the several popular datasets from 
 fair machine learning research.
 
 The following datasets are wrapped:
  - [Adult (Census Income)](https://archive.ics.uci.edu/dataset/2/adult).
+ - [Default](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients)
  - [Law School](https://eric.ed.gov/?id=ED469370) (data from [here](https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study))
-
-## Usage Example
-TODO: 
-Adult is a popular dataset in machine learning fairness research. 
-
-This package provides the `adult.Adult` class:
-a`torch.utils.data.Datasets` loading and, optionally, downloading the
-Adult dataset.
-It can be used like the `MNIST` dataset in
-[torchvision](https://pytorch.org/vision/stable/generated/torchvision.datasets.MNIST.html?highlight=mnist#torchvision.datasets.MNIST).
-
-Beyond `adult.Adult`, this package also provides `adult.AdultRaw`,
-which works just as `adult.Adult`, but
-does not standardize the features in the dataset and does not apply one-hot encoding.
+ - [SouthGerman](https://archive.ics.uci.edu/dataset/573/south+german+credit+update)
 
 ## Installation
 ```shell
@@ -27,7 +15,7 @@ pip install adult-dataset
 
 ## Basic Usage
 ```python
-from adult import Adult
+from fairnessdatasets import Adult
 
 # load (if necessary, download) the Adult training dataset 
 train_set = Adult(root="datasets", download=True)
@@ -47,6 +35,22 @@ loader = DataLoader(test_set, batch_size=32, shuffle=True)
 for epoch in range(100):
     for inputs, targets in iter(loader):
         ...  # Do something with a batch of samples
+```
+You can use `Adult(..., raw=True)` to turn off the one-hot encoding
+and z-score normalization applied by the `Adult` class by default.
+
+The remaining dataset classes can be used in the same way as `Adult`.
+However, these datasets don't come with a fixed train/test split, 
+so that the dataset instances always contain all data.
+To create a train/test split, use
+```python
+from fairnessdatasets import Default
+from torch.utils.data import random_split
+
+dataset = Default(root="datasets", download=True)
+
+rng = torch.Generator().manual_seed(42)  # for reproducible results
+train_set, test_set = random_split(dataset, [0.7, 0.3], generator=rng)
 ```
 
 ## Advanced Usage
