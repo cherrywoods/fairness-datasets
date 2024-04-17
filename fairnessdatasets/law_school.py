@@ -104,7 +104,7 @@ class LawSchool(DefaultPreprocessing):
     def __init__(
         self,
         root: Union[str, os.PathLike],
-        features: Tuple[str] = ("lsat", "zgpa", "zfygpa", "gender", "race1"),
+        features: Tuple[str, ...] = ("lsat", "zgpa", "zfygpa", "gender", "race1"),
         target: str = "pass_bar",
         raw: bool = False,
         download: bool = False,
