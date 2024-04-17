@@ -16,6 +16,7 @@ from fairnessdatasets import Adult, SouthGerman, Default, LawSchool
         (Default, {"raw": True}),
         (LawSchool, {}),
         (LawSchool, {"raw": True}),
+        (LawSchool, {"features": ("gender", "race1", "lsat")}),
         (SouthGerman, {"raw": False}),
         (SouthGerman, {"raw": True}),
     ],
@@ -28,6 +29,7 @@ from fairnessdatasets import Adult, SouthGerman, Default, LawSchool
         "Default-raw",
         "LawSchool",
         "LawSchool-raw",
+        "LawSchool-gender-race1-lsat",
         "SouthGerman",
         "SouthGerman-raw",
     ],
@@ -39,7 +41,7 @@ def test_download(dataset_class, init_kwargs, tmp_path):
 
 @pytest.mark.parametrize(
     "dataset_class",
-    [Adult, SouthGerman, Default],
+    [Adult, SouthGerman, Default, LawSchool],
 )
 def test_download_alongside_raw(dataset_class, tmp_path):
     raw = dataset_class(root=tmp_path, raw=True, download=True)

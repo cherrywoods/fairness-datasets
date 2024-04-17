@@ -151,7 +151,7 @@ class CSVDataset(Dataset, ABC):
         files in the CSV format.
         Overwrite if this does not match your needs.
         """
-        for file, table in zip(self._data_files(), data, strict=True):
+        for file, table in zip(self._data_files(), data):
             table.to_csv(self.files_dir / file, index=False)
 
     def _load_preprocessed(self, file):
