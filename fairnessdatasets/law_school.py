@@ -142,14 +142,20 @@ class LawSchool(DefaultPreprocessing):
     def _download(self):
         self._download_file(self.dataset_url, "raw.csv", self.checksum)
 
+    def _data_file(self) -> str:
+        columns = "-".join(self.__features)
+        return f"data-{columns}-{self.__target}.csv"
+
+    def _data_files(self) -> tuple[str, ...]:
+        return (self._data_file(),)
+
     def _load_raw(self) -> Tuple[pandas.DataFrame]:
         data: pandas.DataFrame = pandas.read_csv(
             self.files_dir / "raw.csv",
             header=0,
             index_col=0,
         )
-        columns = list(self.variables.keys()) + [self._target_column()]
-        return (data.filter(columns),)
+        return (data[self.__features + [self.__target]],)
 
     def _preprocess(self, *data: pandas.DataFrame) -> Tuple[pandas.DataFrame]:
         self._output("Preprocessing data...")

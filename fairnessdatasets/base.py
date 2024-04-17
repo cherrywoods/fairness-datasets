@@ -94,7 +94,7 @@ class CSVDataset(Dataset, ABC):
 
         Used for checking whether the dataset is available in preprocessed form.
         """
-        return ("data.csv",)
+        return (self._data_file(),)
 
     def _data_file(self) -> str:
         """
