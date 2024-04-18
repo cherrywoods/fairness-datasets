@@ -82,7 +82,7 @@ def test_sensitive_attribute_adult_raw(variable, adult_raw_path):
         (SouthGerman, {"raw": True}, "south_german_raw_path", "age", 1),
     ],
 )
-def test_column_indices_default(
+def test_column_indices(
     dataset_class,
     init_kwargs,
     dataset_path,

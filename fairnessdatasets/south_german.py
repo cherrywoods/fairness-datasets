@@ -26,6 +26,8 @@ class SouthGerman(DefaultPreprocessing):
     - `file`: The file containing the data after downloading.
     - `variables`: The variables of the South German Credit dataset,
        together with the values they may take on and the interpretation of the values.
+    - `english_columns_to_german`: A mapping from english column names as used
+      by this class to the german column names of the dataset.
 
     Attributes:
     - `columns`: Column labels for the tensors in this dataset
@@ -156,6 +158,29 @@ class SouthGerman(DefaultPreprocessing):
         variable: None if values is None else tuple(values)
         for variable, values in variables.items()
     }
+    english_columns_to_german = {
+        "status": "laufkont",
+        "duration": "laufzeit",
+        "credit_history": "moral",
+        "purpose": "verw",
+        "amount": "hoehe",
+        "savings": "sparkont",
+        "employment_duration": "beszeit",
+        "installment_rate": "rate",
+        "personal_status_sex": "famges",
+        "other_debtors": "buerge",
+        "present_residence": "wohnzeit",
+        "property": "verm",
+        "age": "alter",
+        "other_installment_plans": "weitkred",
+        "housing": "wohn",
+        "number_credits": "bishkred",
+        "job": "beruf",
+        "people_liable": "pers",
+        "telephone": "telef",
+        "foreign_worker": "gastarb",
+        "credit_risk": "kredit",
+    }
 
     def __init__(
         self,
@@ -184,13 +209,13 @@ class SouthGerman(DefaultPreprocessing):
         return (self.file_to_download,)
 
     def _target_column(self) -> str:
-        return "credit_risk"
+        return self.english_columns_to_german["credit_risk"]
 
     def _download(self):
         self._download_zip(self.dataset_url, self.checksums)
 
     def _load_raw(self) -> Tuple[pandas.DataFrame]:
-        all_columns = list(self.variables.keys()) + [self._target_column()]
+        all_columns = list(self._variables().keys()) + [self._target_column()]
         data: pandas.DataFrame = pandas.read_csv(
             self.files_dir / self.file_to_download,
             index_col=False,
@@ -208,4 +233,10 @@ class SouthGerman(DefaultPreprocessing):
         return data
 
     def _variables(self) -> Dict[str, Optional[Tuple[str, ...]]]:
-        return self._variables_no_desc
+        return {
+            self.english_columns_to_german[var]: vals
+            for var, vals in self._variables_no_desc.items()
+        }
+
+    def column_indices(self, variable: str) -> Tuple[int, ...]:
+        return super().column_indices(self.english_columns_to_german[variable])
