@@ -1,5 +1,6 @@
 # Copyright (c) 2024 Eric Tepper, David Boetius
 # Licensed under the MIT license
+import itertools
 from typing import Callable, Dict, Optional, Tuple, Union
 
 import os
@@ -209,7 +210,7 @@ class SouthGerman(DefaultPreprocessing):
         return (self.file_to_download,)
 
     def _target_column(self) -> str:
-        return self.english_columns_to_german["credit_risk"]
+        return "credit_risk"
 
     def _download(self):
         self._download_zip(self.dataset_url, self.checksums)
@@ -233,10 +234,4 @@ class SouthGerman(DefaultPreprocessing):
         return data
 
     def _variables(self) -> Dict[str, Optional[Tuple[str, ...]]]:
-        return {
-            self.english_columns_to_german[var]: vals
-            for var, vals in self._variables_no_desc.items()
-        }
-
-    def column_indices(self, variable: str) -> Tuple[int, ...]:
-        return super().column_indices(self.english_columns_to_german[variable])
+        return self._variables_no_desc

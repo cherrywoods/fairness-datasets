@@ -263,10 +263,12 @@ class CSVDataset(Dataset, ABC):
          variable names to variable values.
         :return: The preprocessed data (same as :code:`*data`).
         """
+        remapping = {}
         for variable, values in variables.items():
-            remapping = {value: index for index, value in enumerate(values)}
-            for table in data:
-                table.replace(remapping, inplace=True)
+            var_remapping = {value: index for index, value in enumerate(values)}
+            remapping[variable] = var_remapping
+        for table in data:
+            table.replace(remapping, inplace=True)
         return data
 
     @staticmethod
